@@ -32,7 +32,63 @@ class BeliefStateAgent(Agent):
             the ghost to move from (i, j) to (k, l).
         """
 
-        pass
+        W, H = walls.width, walls.height
+        T = np.zeros((W, H, W, H))
+
+        # Set fear parameter based on ghost type
+        if self.ghost == "afraid":
+            fear = 1.0
+        elif self.ghost == "terrified":
+            fear = 3.0
+        else:  # fearless
+            fear = 0.0
+
+        # For each possible previous position (i, j)
+        for i in range(W):
+            for j in range(H):
+                # Skip if position is a wall
+                if walls[i][j]:
+                    continue
+
+                # Get legal actions from position (i, j)
+                legal_actions = []
+                for action, (dx, dy) in [
+                    (Directions.NORTH, (0, 1)),
+                    (Directions.SOUTH, (0, -1)),
+                    (Directions.EAST, (1, 0)),
+                    (Directions.WEST, (-1, 0))
+                ]:
+                    next_x, next_y = i + dx, j + dy
+                    # Check bounds and walls
+                    if (0 <= next_x < W and 0 <= next_y < H and
+                            not walls[next_x][next_y]):
+                        legal_actions.append((action, next_x, next_y))
+
+                # If no legal actions (shouldn't happen), stay in place
+                if not legal_actions:
+                    T[i, j, i, j] = 1.0
+                    continue
+
+                # Compute Manhattan distance from current ghost position to Pacman
+                current_distance = manhattanDistance((i, j), position)
+
+                # Compute action probabilities based on ghost policy
+                action_weights = {}
+                for action, next_x, next_y in legal_actions:
+                    next_distance = manhattanDistance(
+                        (next_x, next_y), position)
+                    # Ghost favors moving away (distance increases or stays same)
+                    if next_distance >= current_distance:
+                        action_weights[(next_x, next_y)] = 2**fear
+                    else:
+                        action_weights[(next_x, next_y)] = 1.0
+
+                # Normalize to get probabilities
+                total_weight = sum(action_weights.values())
+                for (next_x, next_y), weight in action_weights.items():
+                    T[i, j, next_x, next_y] = weight / total_weight
+
+        return T
 
     def observation_matrix(self, walls, evidence, position):
         """Builds the observation matrix
