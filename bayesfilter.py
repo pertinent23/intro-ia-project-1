@@ -1,3 +1,5 @@
+from math import comb
+
 import numpy as np
 
 from pacman_module.game import Agent, Directions, manhattanDistance, Configuration, Actions
@@ -74,13 +76,37 @@ class BeliefStateAgent(Agent):
         Arguments:
             walls: The W x H grid of walls.
             evidence: A noisy ghost distance evidence e_t.
-            position: The current position of Pacman.
+            pacman_position: The current position of Pacman.
 
         Returns:
             The W x H observation matrix O_t.
         """
 
-        pass
+        n = 4
+        p = 0.5
+        binomial_probabilities = {}
+        for k in range(n + 1):
+            binomial_probabilities[k] = comb(n, k) * (p ** k) * ((1 - p) ** (n - k))
+
+        grid_width, grid_height = walls.width, walls.height
+        O = np.zeros((grid_width, grid_height))
+
+        for i in range(grid_width):
+            for j in range(grid_height):
+                if walls[i][j]:
+                    continue
+
+                ghost_actual_distance = manhattanDistance((i, j), pacman_position)
+                # En me basant sur la formule dans le README
+                # evidence = ManhattanDistance ( Pacman , Ghost ) + z − n*p
+                z = evidence - ghost_actual_distance + n*p
+
+                if 0 <= z <= n:
+                    O[i, j] = binomial_probabilities[int(z)]
+                else:
+                    O[i, j] = 0.0
+
+        return O
 
     def update(self, walls, belief, evidence, position):
         """Updates the previous ghost belief state
