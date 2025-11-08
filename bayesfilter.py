@@ -1,6 +1,6 @@
 import numpy as np
 
-from pacman_module.game import Agent, Directions, manhattanDistance
+from pacman_module.game import Agent, Directions, manhattanDistance, Configuration, Actions
 
 
 class BeliefStateAgent(Agent):
@@ -13,9 +13,14 @@ class BeliefStateAgent(Agent):
     def __init__(self, ghost):
         super().__init__()
 
-        self.ghost = ghost
+        if ghost == 'fearless':
+            self.fear = 0.0
+        elif ghost == 'terrified':
+            self.fear = 3.0
+        else:
+            self.fear = 1.0
 
-    def transition_matrix(self, walls, position):
+    def transition_matrix(self, walls, pacman_position):
         """Builds the transition matrix
 
             T_t = P(X_t | X_{t-1})
@@ -24,17 +29,41 @@ class BeliefStateAgent(Agent):
 
         Arguments:
             walls: The W x H grid of walls.
-            position: The current position of Pacman.
+            pacman_position: The current position of Pacman.
 
         Returns:
             The W x H x W x H transition matrix T_t. The element (i, j, k, l)
             of T_t is the probability P(X_t = (k, l) | X_{t-1} = (i, j)) for
             the ghost to move from (i, j) to (k, l).
         """
+        grid_width, grid_height = walls.width, walls.height
+        T = np.zeros_like(grid_width, grid_height, grid_width, grid_height)
 
-        pass
+        for i in range(grid_width):
+            for j in range(grid_height):
+                if walls[i, j]:
+                    continue
 
-    def observation_matrix(self, walls, evidence, position):
+                ghost_configuration = Configuration((i, j), Directions.STOP)
+                ghost_possible_actions = Actions.getPossibleActions(ghost_configuration, walls)
+                ghost_actual_distance = manhattanDistance((i, j), pacman_position)
+                actions_probability = {}
+
+                for action in ghost_possible_actions:
+                    ghost_next_position = Actions.getSuccessor((i,j), action)
+                    ghost_next_distance = manhattanDistance(pacman_position, ghost_next_position)
+                    if ghost_next_distance > ghost_actual_distance:
+                        actions_probability[action] = 2**self.fear
+                    else:
+                        actions_probability[action] = 1.0
+
+                sum_all_probability = sum(actions_probability.values())
+                for action, probability in actions_probability.items():
+                    k, l = Actions.getSuccessor((i,j), action)
+                    T[i,j,k,l] = probability/sum_all_probability
+        return T
+
+    def observation_matrix(self, walls, evidence, pacman_position):
         """Builds the observation matrix
 
             O_t = P(e_t | X_t)
