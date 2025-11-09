@@ -32,7 +32,7 @@ class BeliefStateAgent(Agent):
         # P(z=k) = comb(4, k) * (0.5)^k * (0.5)^(4-k) = comb(4, k) * (0.5)^4
         n = 4
         p = 0.5
-        self.np = n * p  # C'est 2.0
+        self.np_mean = n * p  # C'est 2.0
         self.bin_probs = {k: comb(n, k) * (p**n) for k in range(n + 1)}
 
     def transition_matrix(self, walls, position):
@@ -140,7 +140,7 @@ class BeliefStateAgent(Agent):
                 # Calculer P(evidence | ghost est en (i,j))
                 # evidence = true_distance + z - np
                 # donc z = evidence - true_distance + np
-                z = evidence - true_distance + self.np
+                z = evidence - true_distance + self.np_mean
 
                 # z doit être un entier entre 0 et 4 pour avoir une probabilité
                 # non nulle (car z ~ Binom(4, 0.5))
