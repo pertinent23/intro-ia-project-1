@@ -122,7 +122,30 @@ class BeliefStateAgent(Agent):
             The W x H observation matrix O_t.
         """
 
-        pass
+        W, H = walls.width, walls.height
+        O = np.zeros((W, H))
+        pac_pos = position
+
+        # Itérer sur chaque position possible du fantôme (k, l)
+        for k in range(W):
+            for l in range(H):
+                if walls[k][l]:
+                    O[k, l] = 0.0
+                    continue
+
+                # Calculer la vraie distance de Manhattan
+                md = manhattanDistance((k, l), pac_pos)
+
+                # Calculer la valeur 'z' de la loi binomiale qui
+                # correspondrait à cette évidence.
+                # e = MD + z - np  =>  z = e - MD + np
+                z = evidence - md + self.np
+
+                # P(e_t | X_t) = P(z)
+                # Utiliser .get() pour gérer les cas où z n'est pas dans [0, 4]
+                O[k, l] = self.bin_probs.get(z, 0.0)
+
+        return O
 
     def update(self, walls, belief, evidence, position):
         """Updates the previous ghost belief state
