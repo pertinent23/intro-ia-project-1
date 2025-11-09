@@ -1,0 +1,172 @@
+# Python.gitignore
+
+# Byte-compiled / optimized / DLL files
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+.venv/
+.ENV/
+.pyenv/
+.python-version
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+build/
+tmp/
+
+# PyBuilder
+target/
+
+# IPython
+profile_default/
+ipython_config.py
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582; used by e.g. pythonz
+__pypackages__/
+
+# celery beat schedule file
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.env.*.local
+.envrc
+
+# VS Code, IDEs, editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# JetBrains
+*.iml
+*.iws
+out/
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+*.db
+
+# Static caches
+.cache/
+*.cache
+.cache/*
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+pip-wheel-metadata/
+
+# mypy, pyre, ruff caches
+.mypy_cache/
+.pyre/
+.ruff_cache/
+
+# Local env files
+.env
+.env.local
+.env.*.local
+
+# Jupyter Notebook checkpoints and outputs
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# Ignore compiled Cython files
+*.c
+*.so
+
+# All .md files except README.md
+*.md
+!README.md
