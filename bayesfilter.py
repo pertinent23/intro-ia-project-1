@@ -5,6 +5,7 @@ from collections import deque
 from pacman_module.game import Agent, Directions, manhattanDistance, Actions, Configuration
 from pacman_module import util
 
+
 class BeliefStateAgent(Agent):
     """Belief state agent.
 
@@ -98,7 +99,7 @@ class BeliefStateAgent(Agent):
                 # Remplir la matrice de transition
                 for a, prob in action_probs.items():
                     k, l = Actions.getSuccessor(ghost_pos_prev, a)
-                    
+
                     # S'assurer que le successeur est dans les limites
                     if 0 <= k < W and 0 <= l < H:
                         T[i, j, k, l] = prob
@@ -122,7 +123,33 @@ class BeliefStateAgent(Agent):
             The W x H observation matrix O_t.
         """
 
-        pass
+        W, H = walls.width, walls.height
+        O = np.zeros((W, H))
+
+        # Pour chaque position possible du fantôme
+        for i in range(W):
+            for j in range(H):
+                # Si c'est un mur, la probabilité est 0
+                if walls[i][j]:
+                    continue
+
+                ghost_pos = (i, j)
+                # Calculer la vraie distance de Manhattan
+                true_distance = manhattanDistance(ghost_pos, position)
+
+                # Calculer P(evidence | ghost est en (i,j))
+                # evidence = true_distance + z - np
+                # donc z = evidence - true_distance + np
+                z = evidence - true_distance + self.np
+
+                # z doit être un entier entre 0 et 4 pour avoir une probabilité
+                # non nulle (car z ~ Binom(4, 0.5))
+                if z in self.bin_probs:
+                    O[i, j] = self.bin_probs[z]
+                else:
+                    O[i, j] = 0.0
+
+        return O
 
     def update(self, walls, belief, evidence, position):
         """Updates the previous ghost belief state
