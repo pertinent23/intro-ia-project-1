@@ -31,8 +31,8 @@ Your project will be evaluated based on the correctness of each of the component
 
 Your project will be evaluated as follow:
 
-- ~~**transition_matrix function** (25%): We evaluate the correctness of the component.~~ (Réalisée le 09/10/2025)
-- **observation_matrix function** (25%): We evaluate the correctness of the component.
+- ~~**transition_matrix function** (25%): We evaluate the correctness of the component.~~ (Réalisée le 09/11/2025)
+- ~~**observation_matrix function** (25%): We evaluate the correctness of the component.~~ (Réalisée le 10/11/2025)
 - **update function** (25%): We evaluate the correctness of the component.
 - **Pacman controller** (20%): We evaluate whether you agent is able to eat the ghosts in a reasonable amount of time.
 - **Code style** (5%): You are awarded the maximal grade if your code is PEP-8 compliant and no points otherwise. This test is public.
