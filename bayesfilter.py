@@ -169,10 +169,36 @@ class BeliefStateAgent(Agent):
             The updated ghost belief state b_t as a W x H matrix.
         """
 
-        T = self.transition_matrix(walls, position)
-        O = self.observation_matrix(walls, evidence, position)
+        grid_width, grid_height = walls.width, walls.height
 
-        pass
+        # Calcul des matrices de transition (T) et d'observation (O)
+        T = self.transition_matrix(walls, position)  # P(X_t | X_{t-1})
+        O = self.observation_matrix(walls, evidence, position)  # P(e_t | X_t)
+
+        new_belief = np.zeros((grid_width, grid_height))
+
+        # Étape de prédiction + mise à jour avec observation
+        for i in range(grid_width):
+            for j in range(grid_height):
+                if walls[i][j]:
+                    continue
+                # Somme sur les états précédents possibles
+                total = 0.0
+                for i2 in range(grid_width):
+                    for j2 in range(grid_height):
+                        if walls[i2][j2]:
+                            continue
+                        # P(X_t=(i,j) | X_{t-1}=(i2,j2)) * b_{t-1}(i2,j2)
+                        total += T[i2, j2, i, j] * belief[i2, j2]
+                # Correction des mesures
+                new_belief[i, j] = O[i, j] * total
+
+        # Normalisation pour avoir une somme = 1
+        total_prob = new_belief.sum()
+        if total_prob > 0:
+            new_belief /= total_prob
+
+        return new_belief
 
     def get_action(self, state):
         """Updates the previous belief states given the current state.
