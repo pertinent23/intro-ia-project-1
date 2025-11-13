@@ -172,7 +172,38 @@ class BeliefStateAgent(Agent):
         T = self.transition_matrix(walls, position)
         O = self.observation_matrix(walls, evidence, position)
 
-        pass
+        # S'assurer que le belief est un tableau numpy
+        b_prev = np.array(belief, dtype=float, copy=True)
+
+        # 1. Prediction 
+        # b_prime(x_t) = sum_{x_{t-1}} P(x_t | x_{t-1}) * b(x_{t-1})
+        # T a la forme (W, H, W, H) et b_prev la forme (W, H)
+        b_prime = np.einsum('ijkl,ij->kl', T, b_prev)
+
+        # 2. Correction 
+        # b(x_t) ∝ P(e_t | x_t) * b_prime(x_t)
+        b_t = O * b_prime
+
+        # 3. Normalisation
+        total_prob = float(np.sum(b_t))
+        if total_prob > 0.0:
+            b_t /= total_prob
+            return b_t
+
+        # Si la probabilité totale est nulle, retourner une distribution uniforme
+        W, H = walls.width, walls.height
+        uniform = np.zeros((W, H), dtype=float)
+        free_count = 0
+        for i in range(W):
+            for j in range(H):
+                if not walls[i][j]:
+                    uniform[i, j] = 1.0
+                    free_count += 1
+
+        if free_count > 0:
+            uniform /= float(free_count)
+
+        return uniform    
 
     def get_action(self, state):
         """Updates the previous belief states given the current state.
