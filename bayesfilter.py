@@ -257,6 +257,60 @@ class PacmanAgent(Agent):
             A legal move as defined in `game.Directions`.
         """
 
+        # S'il n'y a pas de croyances ou si tous les fantômes sont mangés, s'arrêter.
+        if not beliefs or all(eaten):
+            return Directions.STOP
+
+        # Stratégie : trouver la case (x, y) avec la plus haute probabilité
+        # de contenir *n'importe quel* fantôme non mangé.
+        
+        # Fusionner les croyances en prenant le max de proba pour chaque case
+        merged_belief = np.zeros_like(beliefs[0])
+        for i in range(len(beliefs)):
+            if not eaten[i]:
+                merged_belief = np.maximum(merged_belief, beliefs[i])
+
+        # Si toutes les croyances sont nulles, s'arrêter
+        if np.sum(merged_belief) == 0:
+            return Directions.STOP
+
+        # Trouver les coordonnées de la probabilité maximale
+        target_pos = np.unravel_index(np.argmax(merged_belief), merged_belief.shape)
+
+        # Si Pacman est déjà sur la cible, s'arrêter (pour manger)
+        if position == target_pos:
+            return Directions.STOP
+
+        # Utiliser BFS (Breadth-First Search) pour trouver le chemin le plus court
+        # vers la case cible et renvoyer la *première* action de ce chemin.
+        
+        queue = deque([(position, [])])  # (position, chemin_actions)
+        visited = {position}
+
+        while queue:
+            curr_pos, path = queue.popleft()
+
+            # Les actions légales de Pacman sont celles qui ne vont pas dans un mur
+            conf = Configuration(curr_pos, Directions.STOP)
+            legal_actions = Actions.getPossibleActions(conf, walls)
+
+            for action in legal_actions:
+                if action == Directions.STOP:
+                    continue
+                
+                succ_pos = Actions.getSuccessor(curr_pos, action)
+                
+                # Si le successeur est la cible, on a trouvé le chemin
+                if succ_pos == target_pos:
+                    # Retourner la première action du chemin complet
+                    return (path + [action])[0]
+                
+                # Ajouter à la file si non visité et pas un mur
+                if succ_pos not in visited and not walls[succ_pos[0]][succ_pos[1]]:
+                    visited.add(succ_pos)
+                    queue.append((succ_pos, path + [action]))
+
+        # Si aucune cible n'est atteignable (improbable), s'arrêter.
         return Directions.STOP
 
     def get_action(self, state):
