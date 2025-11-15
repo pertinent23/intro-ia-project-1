@@ -98,11 +98,14 @@ class BeliefStateAgent(Agent):
 
                 # Remplir la matrice de transition
                 for a, prob in action_probs.items():
-                    k, l = Actions.getSuccessor(ghost_pos_prev, a)
+                    succ = Actions.getSuccessor(ghost_pos_prev, a)
+                    # Coerce to integer grid coordinates (successor can be floats)
+                    k, l = int(succ[0]), int(succ[1])
 
                     # S'assurer que le successeur est dans les limites
                     if 0 <= k < W and 0 <= l < H:
-                        T[i, j, k, l] = prob
+                        # Utiliser += au cas où plusieurs actions mènent à la même case
+                        T[i, j, k, l] += prob
 
         return T
 
@@ -258,7 +261,8 @@ class PacmanAgent(Agent):
         """
 
         # S'il n'y a pas de croyances ou si tous les fantômes sont mangés, s'arrêter.
-        if not beliefs or all(eaten):
+        # `beliefs` peut être un tableau numpy d'objets : utiliser len()
+        if beliefs is None or len(beliefs) == 0 or all(eaten):
             return Directions.STOP
 
         # Stratégie : trouver la case (x, y) avec la plus haute probabilité
@@ -277,15 +281,19 @@ class PacmanAgent(Agent):
         # Trouver les coordonnées de la probabilité maximale
         target_pos = np.unravel_index(np.argmax(merged_belief), merged_belief.shape)
 
+        # Normalize Pacman start position to integer grid coordinates
+        # (some parts of the code return floats like 2.0; walls expects ints)
+        start_pos = (int(position[0]), int(position[1]))
+
         # Si Pacman est déjà sur la cible, s'arrêter (pour manger)
-        if position == target_pos:
+        if start_pos == target_pos:
             return Directions.STOP
 
         # Utiliser BFS (Breadth-First Search) pour trouver le chemin le plus court
         # vers la case cible et renvoyer la *première* action de ce chemin.
         
-        queue = deque([(position, [])])  # (position, chemin_actions)
-        visited = {position}
+        queue = deque([(start_pos, [])])  # (position, chemin_actions)
+        visited = {start_pos}
 
         while queue:
             curr_pos, path = queue.popleft()
@@ -299,16 +307,19 @@ class PacmanAgent(Agent):
                     continue
                 
                 succ_pos = Actions.getSuccessor(curr_pos, action)
-                
+
+                # Coerce successor coordinates to integers for indexing
+                succ_pos_int = (int(succ_pos[0]), int(succ_pos[1]))
+
                 # Si le successeur est la cible, on a trouvé le chemin
-                if succ_pos == target_pos:
+                if succ_pos_int == target_pos:
                     # Retourner la première action du chemin complet
                     return (path + [action])[0]
-                
+
                 # Ajouter à la file si non visité et pas un mur
-                if succ_pos not in visited and not walls[succ_pos[0]][succ_pos[1]]:
-                    visited.add(succ_pos)
-                    queue.append((succ_pos, path + [action]))
+                if succ_pos_int not in visited and not walls[succ_pos_int[0]][succ_pos_int[1]]:
+                    visited.add(succ_pos_int)
+                    queue.append((succ_pos_int, path + [action]))
 
         # Si aucune cible n'est atteignable (improbable), s'arrêter.
         return Directions.STOP
