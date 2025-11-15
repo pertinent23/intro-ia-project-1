@@ -246,92 +246,18 @@ class PacmanAgent(Agent):
         super().__init__()
 
     def _get_action(self, walls, beliefs, eaten, position):
-        """Choisit une action pour Pacman en fonction des belief states.
-
+        """
         Arguments:
-            walls: Grille W x H des murs.
-            beliefs: Liste des belief states des fantômes (matrices W x H).
-            eaten: Liste de booléens indiquant quels fantômes sont mangés.
-            position: Position actuelle de Pacman (x, y).
+            walls: The W x H grid of walls.
+            beliefs: The list of current ghost belief states.
+            eaten: A list of booleans indicating which ghosts have been eaten.
+            position: The current position of Pacman.
 
         Returns:
-            Une action légale (Directions.*).
+            A legal move as defined in `game.Directions`.
         """
-        # Si aucune croyance ou si tous les fantômes sont mangés, on ne bouge pas
-        if not beliefs or all(eaten):
-            return Directions.STOP
 
-        merged = None
-        for i, b in enumerate(beliefs):
-            if eaten[i] or b is None:
-                continue
-            arr = np.array(b, dtype=float)
-            if merged is None:
-                merged = arr
-            else:
-                merged = np.maximum(merged, arr)
-
-        # Si on n'a rien obtenu ou que tout est à zéro, on ne sait pas où aller
-        if merged is None or np.sum(merged) == 0.0:
-            return Directions.STOP
-
-        target = tuple(np.unravel_index(np.argmax(merged), merged.shape))
-
-        # Si Pacman est déjà sur la cible, on s'arrête
-        if position == target:
-            return Directions.STOP
-
-        start = position
-        visited = set([start])
-        queue = util.Queue()
-        # Dans la file: (position_courante, première_action_depuis_start)
-        queue.push((start, None))
-
-        while not queue.isEmpty():
-            curr_pos, first_move = queue.pop()
-
-            if curr_pos == target:
-                return first_move or Directions.STOP
-
-            conf = Configuration(curr_pos, Directions.STOP)
-            legal_actions = Actions.getPossibleActions(conf, walls)
-
-            for action in legal_actions:
-                if action == Directions.STOP:
-                    continue
-
-                succ = Actions.getSuccessor(curr_pos, action)
-                x, y = succ
-                # On ignore les murs et les cases déjà visitées
-                if walls[x][y] or succ in visited:
-                    continue
-
-                visited.add(succ)
-                # Si on n'a pas encore choisi la première action,
-                # celle que l'on joue maintenant devient la première du chemin.
-                next_first = first_move if first_move is not None else action
-                queue.push((succ, next_first))
-
-        # Récupérer les actions légales depuis la position actuelle
-        conf = Configuration(position, Directions.STOP)
-        legal = Actions.getPossibleActions(conf, walls)
-
-        # Retirer STOP s'il y a d'autres actions possibles
-        if Directions.STOP in legal and len(legal) > 1:
-            legal = [a for a in legal if a != Directions.STOP]
-
-        best_action = Directions.STOP
-        best_dist = manhattanDistance(position, target)
-
-        for action in legal:
-            succ = Actions.getSuccessor(position, action)
-            dist = manhattanDistance(succ, target)
-            if dist < best_dist:
-                best_dist = dist
-                best_action = action
-
-        return best_action
-
+        return Directions.STOP
 
     def get_action(self, state):
         """Given a Pacman game state, returns a legal move.
