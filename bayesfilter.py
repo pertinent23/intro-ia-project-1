@@ -1,3 +1,11 @@
+"""
+INFO8006 - Project 1 - Bayes Filter
+Student : 
+    Lucas Bauduin
+    Franck Duval Heuba Batomen
+    Morgan Phemba
+"""
+
 import numpy as np
 from math import comb
 from collections import deque
@@ -290,7 +298,6 @@ class PacmanAgent(Agent):
 
         # Utiliser BFS (Breadth-First Search) pour trouver le chemin le plus court
         # vers la case cible et renvoyer la *première* action de ce chemin.
-        
         queue = deque([(start_pos, [])])  # (position, chemin_actions)
         visited = {start_pos}
 
@@ -305,6 +312,7 @@ class PacmanAgent(Agent):
                 if action == Directions.STOP:
                     continue
                 
+                # Obtenir la position successeur
                 succ_pos = Actions.getSuccessor(curr_pos, action)
 
                 succ_pos_int = (int(succ_pos[0]), int(succ_pos[1]))
