@@ -281,8 +281,7 @@ class PacmanAgent(Agent):
         # Trouver les coordonnées de la probabilité maximale
         target_pos = np.unravel_index(np.argmax(merged_belief), merged_belief.shape)
 
-        # Normalize Pacman start position to integer grid coordinates
-        # (some parts of the code return floats like 2.0; walls expects ints)
+        # Normaliser les coordonnées en tuples entiers
         start_pos = (int(position[0]), int(position[1]))
 
         # Si Pacman est déjà sur la cible, s'arrêter (pour manger)
@@ -308,7 +307,6 @@ class PacmanAgent(Agent):
                 
                 succ_pos = Actions.getSuccessor(curr_pos, action)
 
-                # Coerce successor coordinates to integers for indexing
                 succ_pos_int = (int(succ_pos[0]), int(succ_pos[1]))
 
                 # Si le successeur est la cible, on a trouvé le chemin
