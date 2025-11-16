@@ -1,8 +1,22 @@
+"""
+INFO8006 - Project 1 - Bayes Filter
+Student :
+    Lucas Bauduin
+    Franck Duval Heuba Batomen
+    Morgan Phemba
+"""
+
 import numpy as np
 from math import comb
 from collections import deque
 
-from pacman_module.game import Agent, Directions, manhattanDistance, Actions, Configuration
+from pacman_module.game import (
+    Agent,
+    Directions,
+    manhattanDistance,
+    Actions,
+    Configuration,
+)
 from pacman_module import util
 
 
@@ -66,8 +80,8 @@ class BeliefStateAgent(Agent):
                 dist_prev = manhattanDistance(ghost_pos_prev, pac_pos)
 
                 # Obtenir les actions légales.
-                # Dans ce mode (avec beliefStates), la règle "pas de marche arrière"
-                # est désactivée (vu dans pacman.py, GhostRules)
+                # Dans ce mode,
+                # la règle "pas de marche arrière" est désactivée.
                 conf = Configuration(ghost_pos_prev, Directions.STOP)
                 legal_actions = Actions.getPossibleActions(conf, walls)
 
@@ -81,7 +95,8 @@ class BeliefStateAgent(Agent):
                     succ_pos = Actions.getSuccessor(ghost_pos_prev, a)
                     dist_succ = manhattanDistance(succ_pos, pac_pos)
 
-                    # Assigner un poids plus élevé aux actions qui s'éloignent
+                    # Assigner un poids plus élevé
+                    # aux actions qui s'éloignent
                     if dist_succ >= dist_prev:
                         action_probs[a] = 2**self.fear
                     else:
@@ -98,11 +113,16 @@ class BeliefStateAgent(Agent):
 
                 # Remplir la matrice de transition
                 for a, prob in action_probs.items():
-                    k, l = Actions.getSuccessor(ghost_pos_prev, a)
+                    succ = Actions.getSuccessor(ghost_pos_prev, a)
+                    # Coercer en coordonnées entières de la grille
+                    # (le successeur peut être en float)
+                    k, l = int(succ[0]), int(succ[1])
 
                     # S'assurer que le successeur est dans les limites
                     if 0 <= k < W and 0 <= l < H:
-                        T[i, j, k, l] = prob
+                        # Utiliser += au cas où
+                        # plusieurs actions mènent à la même case
+                        T[i, j, k, l] += prob
 
         return T
 
@@ -142,8 +162,9 @@ class BeliefStateAgent(Agent):
                 # donc z = evidence - true_distance + np
                 z = evidence - true_distance + self.np_mean
 
-                # z doit être un entier entre 0 et 4 pour avoir une probabilité
-                # non nulle (car z ~ Binom(4, 0.5))
+                # z doit être un entier entre 0 et 4
+                # pour avoir une probabilité non nulle
+                # (car z ~ Binom(4, 0.5))
                 if z in self.bin_probs:
                     O[i, j] = self.bin_probs[z]
                 else:
@@ -175,12 +196,12 @@ class BeliefStateAgent(Agent):
         # S'assurer que le belief est un tableau numpy
         b_prev = np.array(belief, dtype=float, copy=True)
 
-        # 1. Prediction 
+        # 1. Prediction
         # b_prime(x_t) = sum_{x_{t-1}} P(x_t | x_{t-1}) * b(x_{t-1})
         # T a la forme (W, H, W, H) et b_prev la forme (W, H)
         b_prime = np.einsum('ijkl,ij->kl', T, b_prev)
 
-        # 2. Correction 
+        # 2. Correction
         # b(x_t) ∝ P(e_t | x_t) * b_prime(x_t)
         b_t = O * b_prime
 
@@ -190,7 +211,8 @@ class BeliefStateAgent(Agent):
             b_t /= total_prob
             return b_t
 
-        # Si la probabilité totale est nulle, retourner une distribution uniforme
+        # Si la probabilité totale est nulle,
+        # retourner une distribution uniforme
         W, H = walls.width, walls.height
         uniform = np.zeros((W, H), dtype=float)
         free_count = 0
@@ -203,7 +225,7 @@ class BeliefStateAgent(Agent):
         if free_count > 0:
             uniform /= float(free_count)
 
-        return uniform    
+        return uniform
 
     def get_action(self, state):
         """Updates the previous belief states given the current state.
@@ -244,6 +266,19 @@ class PacmanAgent(Agent):
 
     def __init__(self):
         super().__init__()
+        # Cache des coordonnées de la grille pour éviter de refaire le meshgrid
+        self._grid_shape = None
+        self._xs = None
+        self._ys = None
+
+    def _ensure_coord_cache(self, walls):
+        """Pré-calcul de xs, ys si la taille de la grille change."""
+        W, H = walls.width, walls.height
+        if self._grid_shape != (W, H):
+            xs, ys = np.meshgrid(np.arange(W), np.arange(H), indexing="ij")
+            self._xs = xs
+            self._ys = ys
+            self._grid_shape = (W, H)
 
     def _get_action(self, walls, beliefs, eaten, position):
         """
@@ -257,61 +292,83 @@ class PacmanAgent(Agent):
             A legal move as defined in `game.Directions`.
         """
 
-        # S'il n'y a pas de croyances ou si tous les fantômes sont mangés, s'arrêter.
-        if not beliefs or all(eaten):
+        # Cas dégénéré : rien à faire
+        if beliefs is None or len(beliefs) == 0 or all(eaten):
             return Directions.STOP
 
-        # Stratégie : trouver la case (x, y) avec la plus haute probabilité
-        # de contenir *n'importe quel* fantôme non mangé.
-        
-        # Fusionner les croyances en prenant le max de proba pour chaque case
-        merged_belief = np.zeros_like(beliefs[0])
-        for i in range(len(beliefs)):
-            if not eaten[i]:
-                merged_belief = np.maximum(merged_belief, beliefs[i])
+        # Actions légales depuis la position actuelle
+        conf = Configuration(position, Directions.STOP)
+        legal_actions = Actions.getPossibleActions(conf, walls)
 
-        # Si toutes les croyances sont nulles, s'arrêter
-        if np.sum(merged_belief) == 0:
+        # Éviter STOP si on a d'autres choix
+        if Directions.STOP in legal_actions and len(legal_actions) > 1:
+            legal_actions.remove(Directions.STOP)
+
+        if not legal_actions:
             return Directions.STOP
 
-        # Trouver les coordonnées de la probabilité maximale
-        target_pos = np.unravel_index(np.argmax(merged_belief), merged_belief.shape)
+        # Assurer le cache des coordonnées
+        self._ensure_coord_cache(walls)
+        xs, ys = self._xs, self._ys
+        W, H = self._grid_shape
 
-        # Si Pacman est déjà sur la cible, s'arrêter (pour manger)
-        if position == target_pos:
+        # 1) Pré-calculer pour chaque fantôme une position "moyenne"
+        ghost_means = []
+        has_active_ghost = False
+
+        for i, belief in enumerate(beliefs):
+            if eaten[i]:
+                ghost_means.append(None)
+                continue
+
+            b = np.asarray(belief, dtype=float)
+            total = b.sum()
+            if total <= 0.0:
+                ghost_means.append(None)
+                continue
+
+            # Normalisation
+            b /= total
+
+            # Espérance des coordonnées
+            ex = float((xs * b).sum())
+            ey = float((ys * b).sum())
+            ghost_means.append((ex, ey))
+            has_active_ghost = True
+
+        if not has_active_ghost:
             return Directions.STOP
 
-        # Utiliser BFS (Breadth-First Search) pour trouver le chemin le plus court
-        # vers la case cible et renvoyer la *première* action de ce chemin.
-        
-        queue = deque([(position, [])])  # (position, chemin_actions)
-        visited = {position}
+        # 2) Choisir l'action qui minimise la distance à la position moyenne
+        best_action = Directions.STOP
+        best_score = float("inf")
 
-        while queue:
-            curr_pos, path = queue.popleft()
+        for action in legal_actions:
+            succ = Actions.getSuccessor(position, action)
+            x_s, y_s = int(succ[0]), int(succ[1])
 
-            # Les actions légales de Pacman sont celles qui ne vont pas dans un mur
-            conf = Configuration(curr_pos, Directions.STOP)
-            legal_actions = Actions.getPossibleActions(conf, walls)
+            # Sécurité : ne pas sortir de la grille ou aller dans un mur
+            if not (0 <= x_s < W and 0 <= y_s < H):
+                continue
+            if walls[x_s][y_s]:
+                continue
 
-            for action in legal_actions:
-                if action == Directions.STOP:
+            # Distance au fantôme le plus "proche" (en moyenne)
+            min_dist = float("inf")
+            for mean in ghost_means:
+                if mean is None:
                     continue
-                
-                succ_pos = Actions.getSuccessor(curr_pos, action)
-                
-                # Si le successeur est la cible, on a trouvé le chemin
-                if succ_pos == target_pos:
-                    # Retourner la première action du chemin complet
-                    return (path + [action])[0]
-                
-                # Ajouter à la file si non visité et pas un mur
-                if succ_pos not in visited and not walls[succ_pos[0]][succ_pos[1]]:
-                    visited.add(succ_pos)
-                    queue.append((succ_pos, path + [action]))
+                ex, ey = mean
+                d = abs(x_s - ex) + abs(y_s - ey)
+                if d < min_dist:
+                    min_dist = d
 
-        # Si aucune cible n'est atteignable (improbable), s'arrêter.
-        return Directions.STOP
+            # Score de l'action : plus petit = mieux
+            if min_dist < best_score:
+                best_score = min_dist
+                best_action = action
+
+        return best_action
 
     def get_action(self, state):
         """Given a Pacman game state, returns a legal move.
