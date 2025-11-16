@@ -266,6 +266,19 @@ class PacmanAgent(Agent):
 
     def __init__(self):
         super().__init__()
+        # Cache des coordonnées de la grille pour éviter de refaire le meshgrid
+        self._grid_shape = None
+        self._xs = None
+        self._ys = None
+
+    def _ensure_coord_cache(self, walls):
+        """Pré-calcul de xs, ys si la taille de la grille change."""
+        W, H = walls.width, walls.height
+        if self._grid_shape != (W, H):
+            xs, ys = np.meshgrid(np.arange(W), np.arange(H), indexing="ij")
+            self._xs = xs
+            self._ys = ys
+            self._grid_shape = (W, H)
 
     def _get_action(self, walls, beliefs, eaten, position):
         """
@@ -291,11 +304,42 @@ class PacmanAgent(Agent):
         if Directions.STOP in legal_actions and len(legal_actions) > 1:
             legal_actions.remove(Directions.STOP)
 
-        W, H = walls.width, walls.height
+        if not legal_actions:
+            return Directions.STOP
 
-        # Pré-calculer la grille des coordonnées pour accélérer les distances
-        xs, ys = np.meshgrid(np.arange(W), np.arange(H), indexing="ij")
+        # Assurer le cache des coordonnées
+        self._ensure_coord_cache(walls)
+        xs, ys = self._xs, self._ys
+        W, H = self._grid_shape
 
+        # 1) Pré-calculer pour chaque fantôme une position "moyenne"
+        ghost_means = []
+        has_active_ghost = False
+
+        for i, belief in enumerate(beliefs):
+            if eaten[i]:
+                ghost_means.append(None)
+                continue
+
+            b = np.asarray(belief, dtype=float)
+            total = b.sum()
+            if total <= 0.0:
+                ghost_means.append(None)
+                continue
+
+            # Normalisation
+            b /= total
+
+            # Espérance des coordonnées
+            ex = float((xs * b).sum())
+            ey = float((ys * b).sum())
+            ghost_means.append((ex, ey))
+            has_active_ghost = True
+
+        if not has_active_ghost:
+            return Directions.STOP
+
+        # 2) Choisir l'action qui minimise la distance à la position moyenne
         best_action = Directions.STOP
         best_score = float("inf")
 
@@ -309,41 +353,19 @@ class PacmanAgent(Agent):
             if walls[x_s][y_s]:
                 continue
 
-            # Pour cette action, on regarde la distance espérée
-            # au fantôme le plus proche
-            min_expected_dist = float("inf")
-
-            for i, belief in enumerate(beliefs):
-                if eaten[i]:
+            # Distance au fantôme le plus "proche" (en moyenne)
+            min_dist = float("inf")
+            for mean in ghost_means:
+                if mean is None:
                     continue
+                ex, ey = mean
+                d = abs(x_s - ex) + abs(y_s - ey)
+                if d < min_dist:
+                    min_dist = d
 
-                b = np.array(belief, dtype=float)
-
-                # Si la belief est vide, on ignore ce fantôme
-                total = b.sum()
-                if total == 0:
-                    continue
-
-                # Normaliser la belief
-                b = b / total
-
-                # Distances de Manhattan entre successeur et toutes les cases
-                dists = np.abs(xs - x_s) + np.abs(ys - y_s)
-
-                # Distance espérée pour ce fantôme
-                expected_dist = np.sum(b * dists)
-
-                if expected_dist < min_expected_dist:
-                    min_expected_dist = expected_dist
-
-            # Score de l'action : plus petit = meilleure
-            score = min_expected_dist
-
-            # On garde la meilleure action, avec un petit tie-breaker
-            if score < best_score or (
-                score == best_score and best_action == Directions.STOP
-            ):
-                best_score = score
+            # Score de l'action : plus petit = mieux
+            if min_dist < best_score:
+                best_score = min_dist
                 best_action = action
 
         return best_action
